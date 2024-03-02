@@ -240,3 +240,225 @@ class SnakeGame:
 if __name__ == "__main__":
     game = SnakeGame()
     game.run()
+
+
+
+# cod embedded(controller PS conectat prin Bluetooth)
+
+"""import pygame
+import random
+
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+DARK_GRAY = (50, 50, 50)
+
+SPEEDS = {'Easy': 5, 'Medium': 10, 'Hard': 15}
+
+UP = (0, -1)
+DOWN = (0, 1)
+LEFT = (-1, 0)
+RIGHT = (1, 0)
+
+class Button:
+    def __init__(self, x, y, width, height, color, text=''):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.color = color
+        self.text = text
+        self.font = pygame.font.SysFont("Courier New", 25)
+
+    def draw(self, surface):
+        pygame.draw.rect(surface, self.color, self.rect)
+        text_surface = self.font.render(self.text, True, WHITE)
+        text_rect = text_surface.get_rect(center=self.rect.center)
+        surface.blit(text_surface, text_rect)
+
+    def clicked(self, pos):
+        return self.rect.collidepoint(pos)
+
+class SnakeGame:
+    def __init__(self):
+        pygame.init()
+        pygame.joystick.init()
+        if pygame.joystick.get_count() > 0:
+            self.joystick = pygame.joystick.Joystick(0)
+            self.joystick.init()
+        else:
+            print("No joystick connected!")
+            self.joystick = None
+
+        self.screen = pygame.display.set_mode((720, 480))
+        pygame.display.set_caption('Snake Game')
+        self.clock = pygame.time.Clock()
+        self.difficulty = 'Medium'
+        self.best_scores = {'Easy': 0, 'Medium': 0, 'Hard': 0}
+        self.selected_button_index = 0
+        self.reset()
+        self.choose_difficulty()
+
+    def reset(self):
+        self.snake = [(20, 20)]
+        self.snake_direction = RIGHT
+        self.food = self.generate_food()
+        self.score = 0
+        self.lost = False
+
+    def choose_difficulty(self):
+        self.buttons = []
+        difficulty_text = "CHOOSE YOUR DIFFICULTY LEVEL FOR YOUR GAME:"
+        button_width = 300
+        button_height = 40
+        button_spacing = 10
+
+        total_buttons_height = len(SPEEDS) * (button_height + button_spacing) - button_spacing
+        start_y = (self.screen.get_height() - total_buttons_height) // 2 - 50
+        button_x = (self.screen.get_width() - button_width) // 2
+
+        self.screen.fill(WHITE)
+        self.draw_difficulty_text(difficulty_text, start_y)
+
+        for i, (difficulty, _) in enumerate(SPEEDS.items()):
+            button = Button(button_x, start_y + i * (button_height + button_spacing), button_width, button_height, DARK_GRAY, difficulty)
+            self.buttons.append(button)
+
+        self.display_buttons()
+        self.handle_difficulty_selection()
+
+    def display_buttons(self):
+        for button in self.buttons:
+            button.draw(self.screen)
+        pygame.display.update()
+
+    def handle_difficulty_selection(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    if event.button == 1:  # Circle button for confirmation
+                        self.difficulty = self.buttons[self.selected_button_index].text
+                        self.reset()
+                        return
+                elif event.type == pygame.JOYHATMOTION:
+                    if event.value == (0, 1):  # D-pad UP
+                        self.selected_button_index = max(0, self.selected_button_index - 1)
+                    elif event.value == (0, -1):  # D-pad DOWN
+                        self.selected_button_index = min(len(self.buttons) - 1, self.selected_button_index + 1)
+
+                    self.highlight_selected_button()
+
+    def highlight_selected_button(self):
+        for i, button in enumerate(self.buttons):
+            if i == self.selected_button_index:
+                button.color = RED
+            else:
+                button.color = DARK_GRAY
+        self.display_buttons()
+
+    def draw_difficulty_text(self, difficulty_text, start_y):
+        font = pygame.font.SysFont("Courier New", 30)
+        text_surface = font.render(difficulty_text, True, WHITE)
+        text_rect = text_surface.get_rect(center=(self.screen.get_width() // 2, start_y - 30))
+        self.screen.blit(text_surface, text_rect)
+
+    def generate_food(self):
+        while True:
+            food_x = random.randint(0, self.screen.get_width() // 20 - 1)
+            food_y = random.randint(0, self.screen.get_height() // 20 - 1)
+            food = (food_x * 20, food_y * 20)
+            if food not in self.snake:
+                return food
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            elif event.type == pygame.JOYHATMOTION:
+                if event.value == (0, 1) and self.snake_direction != DOWN:  # D-pad UP
+                    self.snake_direction = UP
+                elif event.value == (0, -1) and self.snake_direction != UP:  # D-pad DOWN
+                    self.snake_direction = DOWN
+                elif event.value == (-1, 0) and self.snake_direction != RIGHT:  # D-pad LEFT
+                    self.snake_direction = LEFT
+                elif event.value == (1, 0) and self.snake_direction != LEFT:  # D-pad RIGHT
+                    self.snake_direction = RIGHT
+
+    def move_snake(self):
+        new_head = (self.snake[0][0] + self.snake_direction[0] * 20, self.snake[0][1] + self.snake_direction[1] * 20)
+
+        if new_head[0] < 0 or new_head[0] >= self.screen.get_width() or new_head[1] < 0 or new_head[1] >= self.screen.get_height() or new_head in self.snake:
+            self.lost = True
+            return
+
+        self.snake.insert(0, new_head)
+
+        if new_head == self.food:
+            self.score += 1
+            self.food = self.generate_food()
+        else:
+            self.snake.pop()
+
+    def draw(self):
+        self.screen.fill(DARK_GRAY)
+        for block in self.snake:
+            pygame.draw.rect(self.screen, GREEN, pygame.Rect(block[0], block[1], 20, 20))
+        pygame.draw.rect(self.screen, RED, pygame.Rect(self.food[0], self.food[1], 20, 20))
+        font = pygame.font.SysFont("Courier New", 25)
+        score_text = font.render('Score: ' + str(self.score), True, WHITE)
+        self.screen.blit(score_text, (10, 10))
+        pygame.display.update()
+
+    def run(self):
+        while not self.lost:
+            self.handle_events()
+            self.move_snake()
+            self.draw()
+            self.clock.tick(SPEEDS[self.difficulty])
+
+        self.update_best_score()
+        self.display_loss_message()
+
+    def update_best_score(self):
+        if self.score > self.best_scores[self.difficulty]:
+            self.best_scores[self.difficulty] = self.score
+
+    def display_loss_message(self):
+        font_large = pygame.font.SysFont("Courier New", 40, bold=True)
+        font_medium = pygame.font.SysFont("Courier New", 30)
+        message_large = font_large.render('YOU LOST!', True, RED)
+        message_score = font_medium.render('Your score: ' + str(self.score), True, WHITE)
+        message_best = font_medium.render('Best score: ' + str(self.best_scores[self.difficulty]), True, WHITE)
+        message_retry = font_medium.render('Press Circle to retry.', True, WHITE)
+        message_change_difficulty = font_medium.render('Press Triangle to change difficulty.', True, WHITE)
+
+        self.screen.fill(DARK_GRAY)
+        self.screen.blit(message_large, (200, 100))
+        self.screen.blit(message_score, (200, 150))
+        self.screen.blit(message_best, (200, 200))
+        self.screen.blit(message_retry, (200, 250))
+        self.screen.blit(message_change_difficulty, (200, 300))
+        pygame.display.update()
+
+        waiting_for_input = True
+        while waiting_for_input:
+            for event in pygame.event.get():
+                if event.type == pygame.JOYBUTTONDOWN:
+                    if event.button == 0:  # Circle button
+                        waiting_for_input = False
+                        self.reset()
+                        self.run()
+                    elif event.button == 2:  # Triangle button
+                        self.choose_difficulty()
+                        waiting_for_input = False
+                        self.reset()
+                        self.run()
+                elif event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+
+if __name__ == "__main__":
+    game = SnakeGame()
+    game.run()"""
+
